@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Servidor local del gestor de tickets. Solo libreria estandar.
 
-Datos en data/tickets.json y data/contacts.json. Variables de entorno: PORT (8791), HOST (127.0.0.1),
+Datos en data/tickets.json, data/contacts.json y data/reminders.json. Variables de entorno: PORT (8791), HOST (127.0.0.1),
 DATA_DIR (./data) para cuando se pase a Docker.
 """
 import json
@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
 DATA_DIR = os.environ.get("DATA_DIR", os.path.join(BASE, "data"))
-COLLECTIONS = ("tickets", "contacts")
+COLLECTIONS = ("tickets", "contacts", "reminders")
 LOCK = threading.Lock()
 BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 KEEP_DAILY = 30
@@ -63,7 +63,7 @@ def snapshot(name=None):
         return
     os.makedirs(BACKUP_DIR, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"tickets": load("tickets"), "contacts": load("contacts")}, f, ensure_ascii=False)
+        json.dump({c: load(c) for c in COLLECTIONS}, f, ensure_ascii=False)
     daily = sorted(n for n in os.listdir(BACKUP_DIR) if n.startswith("backup-"))
     for old in daily[:-KEEP_DAILY]:
         os.remove(os.path.join(BACKUP_DIR, old))
@@ -79,11 +79,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _route(self):
-        m = re.fullmatch(r"/api/(tickets|contacts)/([\w-]+)", self.path)
+        m = re.fullmatch(r"/api/(tickets|contacts|reminders)/([\w-]+)", self.path)
         return (m.group(1), m.group(2)) if m else (None, None)
 
     def do_GET(self):
-        m = re.fullmatch(r"/api/(tickets|contacts)", self.path)
+        m = re.fullmatch(r"/api/(tickets|contacts|reminders)", self.path)
         if m:
             with LOCK:
                 return self._json(load(m.group(1)))
@@ -92,8 +92,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_file(m.group(1), m.group(2))
         if self.path == "/api/export":
             with LOCK:
-                data = {"exported": time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "tickets": load("tickets"), "contacts": load("contacts")}
+                data = {"exported": time.strftime("%Y-%m-%d %H:%M:%S")}
+                data.update({c: load(c) for c in COLLECTIONS})
             body = json.dumps(data, ensure_ascii=False, indent=1).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -172,16 +172,17 @@ class Handler(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length", 0))
         try:
             data = json.loads(self.rfile.read(n).decode("utf-8"))
-            tickets, contacts = data["tickets"], data.get("contacts", [])
-            assert isinstance(tickets, list) and isinstance(contacts, list)
-            assert all(isinstance(x, dict) and x.get("id") for x in tickets + contacts)
+            tickets, contacts, reminders = data["tickets"], data.get("contacts", []), data.get("reminders", [])
+            assert isinstance(tickets, list) and isinstance(contacts, list) and isinstance(reminders, list)
+            assert all(isinstance(x, dict) and x.get("id") for x in tickets + contacts + reminders)
         except (ValueError, KeyError, AssertionError, TypeError):
             return self._json({"error": "fichero de copia invalido"}, 400)
         with LOCK:
             snapshot("pre-import-%s.json" % time.strftime("%Y-%m-%d-%H%M%S"))
             save("tickets", tickets)
             save("contacts", contacts)
-        self._json({"ok": True, "tickets": len(tickets), "contacts": len(contacts)})
+            save("reminders", reminders)
+        self._json({"ok": True, "tickets": len(tickets), "contacts": len(contacts), "reminders": len(reminders)})
 
     def do_PUT(self):
         col, tid = self._route()

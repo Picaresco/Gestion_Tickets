@@ -163,6 +163,36 @@ mark{background:#f0c75e;color:#1c1a16;border-radius:3px;padding:0 1px}
 .ct:hover b{text-decoration:underline}
 .av{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font:600 12px var(--sans);flex:none}
 .ct b{display:block;font-size:14px;line-height:1.2}.ct small{font:400 11px var(--mono);color:var(--mut)}
+.box{position:relative}
+.wx{position:absolute;top:14px;right:16px;background:none;border:0;padding:0;cursor:pointer;font:500 11px var(--mono);color:var(--mut);opacity:0;transition:opacity .15s}
+.box:hover .wx,.wx:focus-visible{opacity:1}
+.wx:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+@media (hover:none){.wx{opacity:1}}
+.wadd{position:relative;display:flex;justify-content:flex-end}
+.wadd>button{font:500 12px var(--mono);border:1.5px dashed var(--mut);border-radius:999px;padding:5px 14px;background:none;color:var(--mut);cursor:pointer;transition:.18s}
+.wadd>button:hover,.wadd>button[aria-expanded=true]{border-style:solid;border-color:var(--ink);color:var(--ink)}
+.wmenu{position:absolute;top:calc(100% + 6px);right:0;z-index:20;min-width:240px;background:var(--sheet);border:1.5px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--ink);padding:6px;animation:pop .2s both}
+.wmenu button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:8px 10px;font:600 14px var(--sans);color:var(--ink);cursor:pointer}
+.wmenu button:hover{background:var(--hi)}
+.wmenu small{display:block;padding:8px 10px;font:italic 400 15px var(--serif);color:var(--mut)}
+.rnew{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.rnew input[type=text]{flex:1 1 100%;font:italic 400 16px var(--serif);border:0;border-bottom:1.5px dashed var(--line);background:none;outline:0;color:var(--ink);padding:4px 0}
+.rnew input[type=text]:focus{border-bottom-color:var(--ink)}
+.rnew input[type=text]::placeholder{color:var(--mut)}
+.rnew input[type=date]{flex:1}
+.rnew .b{padding:4px 14px}
+.rc{display:flex;gap:10px;padding:9px 0;border-top:1px dashed var(--line);align-items:flex-start}
+.rc .dt{font:500 11px var(--mono);width:58px;flex:none;color:var(--mut);padding-top:2px}
+.rc .dt.late{color:var(--due);font-weight:600}
+.rc .rx{flex:1;min-width:0;font-weight:600;font-size:14px;line-height:1.3;word-break:break-word}
+.rc .ra{display:flex;flex:none}
+.rc .ib{padding:0 3px}
+.rc:hover .ib{opacity:1}
+.rc.ed{flex-wrap:wrap}
+.rc.ed input.ed{flex:1 1 100%}
+.rc.ed .arow{margin-top:0;flex-wrap:nowrap;width:100%}
+.rc.ed input[type=date]{flex:1;min-width:0}
+.rc.ed .b{padding:4px 11px}
 .foot{margin-top:30px;padding-top:14px;border-top:1px dashed var(--line);display:flex;gap:16px;font:500 12px var(--mono);color:var(--mut);align-items:center}
 .foot a{color:var(--mut)}
 
@@ -228,9 +258,13 @@ dialog input{width:100%;padding:8px 10px;border:1.5px solid var(--ink);border-ra
   <div class="layout" id="layout">
     <section class="list" id="list"></section>
     <aside class="side" id="side">
-      <div class="box"><h3>Pr&oacute;ximos 7 d&iacute;as</h3><div class="week" id="week"></div></div>
-      <div class="box"><h3>Seguimientos</h3><div id="fus"></div></div>
-      <div class="box"><h3>Contactos</h3><div id="cts"></div></div>
+      <div class="wadd"><button type="button" id="wadd" aria-expanded="false">+ A&ntilde;adir widget</button><div class="wmenu" id="wmenu" hidden></div></div>
+      <div class="box" data-w="week"><button type="button" class="wx" data-hide="week" title="Ocultar este panel">ocultar</button><h3>Pr&oacute;ximos 7 d&iacute;as</h3><div class="week" id="week"></div></div>
+      <div class="box" data-w="rec"><button type="button" class="wx" data-hide="rec" title="Ocultar este panel">ocultar</button><h3>Recordatorios</h3>
+        <form class="rnew" id="rnew"><input type="text" id="rt" placeholder="Algo que recordar&hellip;" autocomplete="off"><input type="date" id="rd" required><button class="b">A&ntilde;adir</button></form>
+        <div id="recs"></div></div>
+      <div class="box" data-w="fus"><button type="button" class="wx" data-hide="fus" title="Ocultar este panel">ocultar</button><h3>Seguimientos</h3><div id="fus"></div></div>
+      <div class="box" data-w="cts"><button type="button" class="wx" data-hide="cts" title="Ocultar este panel">ocultar</button><h3>Contactos</h3><div id="cts"></div></div>
     </aside>
   </div>
   <footer class="foot"><a href="/api/export" download title="Descargar copia de todos los datos">Exportar copia</a><button class="lnk" id="imp" title="Restaurar desde un fichero exportado">Importar copia</button><input type="file" id="impf" accept=".json,application/json" hidden></footer>
@@ -252,7 +286,7 @@ dialog input{width:100%;padding:8px 10px;border:1.5px solid var(--ink);border-ra
 <script>
 
 const AR='A realizar', PE='Pendiente', RE='Realizada';
-let tickets=[], contacts=[], view='hoy', query='', tab='todo';
+let tickets=[], contacts=[], reminders=[], view='hoy', query='', tab='todo', editRem=null;
 const expanded=new Set(), declined=new Set();
 let collapsed=new Set();
 try{collapsed=new Set(JSON.parse(localStorage.getItem('collapsed')||'[]'))}catch(e){}
@@ -271,7 +305,7 @@ const digits=s=>(s||'').replace(/[\s.\-()+]/g,'');
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
 
 async function load(){
-  [tickets,contacts]=await Promise.all([fetch('/api/tickets').then(r=>r.json()),fetch('/api/contacts').then(r=>r.json())]);
+  [tickets,contacts,reminders]=await Promise.all(['tickets','contacts','reminders'].map(c=>fetch('/api/'+c).then(r=>r.json())));
   render();
 }
 async function save(t){t.updated=now();await fetch('/api/tickets/'+t.id,{method:'PUT',body:JSON.stringify(t)});render()}
@@ -281,6 +315,11 @@ async function saveContact(c){
   const i=contacts.findIndex(x=>x.id===c.id);if(i<0)contacts.push(c);else contacts[i]=c;render();
 }
 async function removeContact(c){await fetch('/api/contacts/'+c.id,{method:'DELETE'});contacts=contacts.filter(x=>x!==c);render()}
+async function saveRem(r){
+  await fetch('/api/reminders/'+r.id,{method:'PUT',body:JSON.stringify(r)});
+  const i=reminders.findIndex(x=>x.id===r.id);if(i<0)reminders.push(r);else reminders[i]=r;render();
+}
+async function removeRem(r){await fetch('/api/reminders/'+r.id,{method:'DELETE'});reminders=reminders.filter(x=>x!==r);render()}
 
 function ask(msg,buttons){return new Promise(res=>{
   $('#dmsg').textContent=msg;const b=$('#dbtn');b.innerHTML='';
@@ -645,7 +684,10 @@ function head(){
   const open=tickets.filter(t=>!t.closed);
   const a=open.filter(t=>tState(t)==='ar').length,p=open.filter(t=>tState(t)==='pe').length,r=open.filter(isDue).length;
   $('#kick').textContent=new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  $('#sum').innerHTML=open.length?'Tienes <b>'+a+' cosa'+(a===1?'':'s')+' por hacer</b> y <b>'+(p+r)+' esperando respuesta</b>'+(r?'; hoy toca <b>reclamar '+r+'</b>.':'.'):'No tienes nada abierto. Buen trabajo.';
+  const rc=dueRems().length,recs=rc?'<b>'+rc+' recordatorio'+(rc===1?'':'s')+'</b> para hoy':'';
+  const extra=[r?'hoy toca <b>reclamar '+r+'</b>':'',recs?'tienes '+recs:''].filter(Boolean).join(' y ');
+  $('#sum').innerHTML=open.length?'Tienes <b>'+a+' cosa'+(a===1?'':'s')+' por hacer</b> y <b>'+(p+r)+' esperando respuesta</b>'+(extra?'; '+extra:'')+'.'
+    :rc?'No tienes tickets abiertos, pero tienes '+recs+'.':'No tienes nada abierto. Buen trabajo.';
   const F=[['todo','Todo',open.length],['ar','A realizar',a],['pe','Pendiente',p+r],['ok','Cerrados',tickets.length-open.length]];
   $('#tabs').innerHTML=F.map(f=>'<button class="tab '+(view==='hoy'&&tab===f[0]?'on':'')+'" data-tab="'+f[0]+'">'+f[1]+'<i>'+f[2]+'</i></button>').join('')+
     '<span class="sep"></span><button class="tab '+(view==='con'?'on':'')+'" data-view="con">Contactos<i>'+contacts.length+'</i></button>'+
@@ -655,15 +697,66 @@ function head(){
 function side(){
   const hoy=new Date(),ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   const pend=tickets.filter(t=>!t.closed&&openLine(t)&&openLine(t).status===PE&&openLine(t).remind);
+  const R=openRems().sort((a,b)=>a.date.localeCompare(b.date)||a.created.localeCompare(b.created));
   $('#week').innerHTML=[...Array(7)].map((_,i)=>{const d=new Date(hoy);d.setDate(d.getDate()+i);const s=ymd(d);
-    const mark=pend.some(t=>{const r=openLine(t).remind;return i===0?r<=s:r===s});
-    return '<div class="day '+(i===0?'t0':'')+'"><small>'+d.toLocaleDateString('es-ES',{weekday:'short'})+'</small><b>'+d.getDate()+'</b>'+(mark?'<i></i>':'')+'</div>'}).join('');
+    const on=r=>i===0?r<=s:r===s,nf=pend.filter(t=>on(openLine(t).remind)).length,nr=R.filter(r=>on(r.date)).length;
+    const tip=[nf?nf+' seguimiento'+(nf>1?'s':''):'',nr?nr+' recordatorio'+(nr>1?'s':''):''].filter(Boolean).join(', ');
+    return '<div class="day '+(i===0?'t0':'')+'"'+(tip?' title="'+tip+'"':'')+'><small>'+d.toLocaleDateString('es-ES',{weekday:'short'})+'</small><b>'+d.getDate()+'</b>'+(tip?'<i></i>':'')+'</div>'}).join('');
+  const rb=$('#recs');rb.innerHTML=R.length?'':'<small style="color:var(--mut)">Sin recordatorios</small>';
+  R.forEach(r=>rb.appendChild(remEl(r)));
   const F=[...pend].sort((a,b)=>openLine(a).remind.localeCompare(openLine(b).remind));
-  $('#fus').innerHTML=F.map(t=>{const r=openLine(t).remind,n=Math.round((new Date(r+'T00:00')-new Date(ymd(hoy)+'T00:00'))/864e5);
-    return '<div class="fu" data-go="'+t.id+'"><div class="dt '+(n<=0?'late':'')+'">'+(n<0?'hace '+(-n)+' d':n===0?'hoy':'en '+n+' d')+'</div><div><b>'+esc(t.lines[0].text)+'</b><small>'+esc(companyOf(t))+'</small></div></div>'}).join('')||'<small style="color:var(--mut)">Sin seguimientos programados</small>';
+  $('#fus').innerHTML=F.map(t=>{const [n,txt]=rel(openLine(t).remind);
+    return '<div class="fu" data-go="'+t.id+'"><div class="dt '+(n<=0?'late':'')+'">'+txt+'</div><div><b>'+esc(t.lines[0].text)+'</b><small>'+esc(companyOf(t))+'</small></div></div>'}).join('')||'<small style="color:var(--mut)">Sin seguimientos programados</small>';
   const C=[...contacts].sort((a,b)=>norm(a.company||'~').localeCompare(norm(b.company||'~'))||norm(a.name).localeCompare(norm(b.name))).slice(0,7);
   $('#cts').innerHTML=C.map(c=>'<div class="ct" data-ct="'+c.id+'"><span class="av">'+esc((c.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase())+'</span><div><b>'+esc(c.name||'(sin nombre)')+'</b><small>'+esc([c.company,c.phone].filter(Boolean).join(' \u00B7 '))+'</small></div></div>').join('')||'<small style="color:var(--mut)">Sin contactos</small>';
 }
+/* ---------- recordatorios ---------- */
+const openRems=()=>reminders.filter(r=>!r.done);
+const dueRems=()=>openRems().filter(r=>r.date<=today());
+const rel=s=>{const n=Math.round((new Date(s+'T00:00')-new Date(today()+'T00:00'))/864e5);return [n,n<0?'hace '+(-n)+' d':n===0?'hoy':'en '+n+' d']};
+function remEl(r){
+  const el=document.createElement('div');el.className='rc';
+  if(editRem===r.id){
+    el.classList.add('ed');
+    const t=document.createElement('input');t.className='ed';t.value=r.text;
+    const d=document.createElement('input');d.type='date';d.value=r.date;
+    const ok=()=>{const v=t.value.trim();if(!v||!d.value)return;editRem=null;saveRem({...r,text:v,date:d.value})};
+    const ko=()=>{editRem=null;render()};
+    [t,d].forEach(i=>i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ok()}if(e.key==='Escape')ko()});
+    const row=document.createElement('div');row.className='arow';row.append(d,btn('Guardar','b ok',ok),btn('Cancelar','b',ko));
+    el.append(t,row);setTimeout(()=>t.focus());
+    return el;
+  }
+  const [n,txt]=rel(r.date);
+  const dt=document.createElement('div');dt.className='dt'+(n<=0?' late':'');dt.textContent=txt;
+  dt.title=new Date(r.date+'T00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const x=document.createElement('b');x.className='rx';x.textContent=r.text;
+  const a=document.createElement('span');a.className='ra';
+  const mk=(l,ti,fn)=>{const b=btn(l,'ib',fn);b.title=ti;a.appendChild(b)};
+  mk('✓','Hecho',()=>{saveRem({...r,done:now()});toast('Recordatorio hecho',2000)});
+  mk('✎','Editar',()=>{editRem=r.id;render()});
+  mk('✕','Borrar',async()=>{if(await ask('Borrar el recordatorio "'+r.text+'"?',[['Cancelar',false],['Borrar',true,true]]))removeRem(r)});
+  el.append(dt,x,a);return el;
+}
+$('#rnew').onsubmit=e=>{e.preventDefault();const v=$('#rt').value.trim(),d=$('#rd').value;if(!v||!d)return;
+  saveRem({id:uid(),text:v,date:d,created:now(),done:null});$('#rt').value='';$('#rd').value=today();$('#rt').focus()};
+
+/* ---------- paneles laterales (widgets) ---------- */
+const WIDGETS=[['week','Próximos 7 días'],['rec','Recordatorios'],['fus','Seguimientos'],['cts','Contactos']];
+let hiddenW=new Set();
+try{hiddenW=new Set(JSON.parse(localStorage.getItem('hiddenWidgets')||'[]'))}catch(e){}
+function widgets(){
+  document.querySelectorAll('.box[data-w]').forEach(b=>b.hidden=hiddenW.has(b.dataset.w));
+  const off=WIDGETS.filter(w=>hiddenW.has(w[0]));
+  $('#wmenu').innerHTML=off.map(w=>'<button type="button" data-show="'+w[0]+'">+ '+w[1]+'</button>').join('')||'<small>Todos los paneles están a la vista</small>';
+}
+function setWidget(id,show){
+  show?hiddenW.delete(id):hiddenW.add(id);
+  try{localStorage.setItem('hiddenWidgets',JSON.stringify([...hiddenW]))}catch(e){}
+  widgets();
+}
+const wmenu=open=>{$('#wmenu').hidden=!open;$('#wadd').setAttribute('aria-expanded',open)};
+
 function render(){
   numOf.clear();[...tickets].sort((a,b)=>new Date(a.created)-new Date(b.created)).forEach((t,i)=>numOf.set(t.id,i+1));
   head();
@@ -703,6 +796,10 @@ function reveal(id){
   if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1300)}
 }
 document.addEventListener('click',e=>{
+  const hd=e.target.closest('[data-hide]');if(hd)return setWidget(hd.dataset.hide,false);
+  const sw=e.target.closest('[data-show]');if(sw){setWidget(sw.dataset.show,true);return wmenu(false)}
+  if(e.target.closest('#wadd'))return wmenu($('#wmenu').hidden);
+  if(!e.target.closest('#wmenu'))wmenu(false);
   const chip=e.target.closest('.cm[data-c]');if(chip)return goContact(chip.dataset.c);
   const tb=e.target.closest('[data-tab]');if(tb){view='hoy';tab=tb.dataset.tab;query='';return render()}
   const vw=e.target.closest('[data-view]');if(vw){view=vw.dataset.view;query='';return render()}
@@ -745,6 +842,7 @@ $('#res').onclick=e=>{const it=e.target.closest('.it');if(it){si=+it.dataset.i;p
 addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();palOpen();return}
   if(!$('#ov').classList.contains('on')){
+    if(e.key==='Escape'&&!$('#wmenu').hidden)wmenu(false);
     if(e.key==='/'&&!/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();palOpen()}
     return;
   }
@@ -759,12 +857,14 @@ $('#impf').onchange=async e=>{
   const bad=m=>ask(m,[['Cerrar',true,true]]);
   let data;try{data=JSON.parse(await f.text())}catch(x){return bad('El fichero no es un JSON valido.')}
   if(!data||!Array.isArray(data.tickets))return bad('El fichero no parece una copia de este gestor.');
-  const ok=await ask('Importar reemplazara los datos actuales ('+tickets.length+' tickets, '+contacts.length+' contactos) por los del fichero ('+data.tickets.length+' tickets, '+(data.contacts||[]).length+' contactos). Antes se guarda una copia automatica. Continuar?',[['Cancelar',false],['Importar',true,true]]);
+  const ok=await ask('Importar reemplazara los datos actuales ('+tickets.length+' tickets, '+contacts.length+' contactos, '+reminders.length+' recordatorios) por los del fichero ('+data.tickets.length+' tickets, '+(data.contacts||[]).length+' contactos, '+(data.reminders||[]).length+' recordatorios). Antes se guarda una copia automatica. Continuar?',[['Cancelar',false],['Importar',true,true]]);
   if(!ok)return;
   const r=await fetch('/api/import',{method:'POST',body:JSON.stringify(data)});
   if(!r.ok)return bad('No se pudo importar: fichero invalido.');
   await load();
 };
+$('#rd').value=today();
+widgets();
 load();
 </script>
 </body>

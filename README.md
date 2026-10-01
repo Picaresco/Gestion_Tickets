@@ -59,7 +59,7 @@ Puedes cambiar un paso entre A realizar y Pendiente pulsando su etiqueta, editar
 
 Cabecera de libreta con una frase-resumen ("Tienes 4 cosas por hacer y 4 esperando respuesta; hoy toca reclamar 1") y pestañas **Todo / A realizar / Pendiente / Cerrados** (más **Contactos**), cada una con su contador. Los tickets que hay que reclamar salen siempre primero.
 
-Cada ticket es una ficha numerada con el nombre de la empresa en el margen (la del contacto mencionado) y un borde de color según su estado: naranja (A realizar), ámbar (Pendiente), rojo (Reclamar) y verde (cerrado). La primera línea hace de título y el primer paso abierto lleva sus botones **Hecho** y **Pasar a Pendiente / A realizar** debajo. A la derecha hay un panel con los próximos 7 días, los seguimientos programados y los contactos.
+Cada ticket es una ficha numerada con el nombre de la empresa en el margen (la del contacto mencionado) y un borde de color según su estado: naranja (A realizar), ámbar (Pendiente), rojo (Reclamar) y verde (cerrado). La primera línea hace de título y el primer paso abierto lleva sus botones **Hecho** y **Pasar a Pendiente / A realizar** debajo. A la derecha hay una columna de paneles: los próximos 7 días, los recordatorios, los seguimientos programados y los contactos.
 
 Con el tema claro u oscuro del sistema, la app cambia automáticamente de paleta (papel o cuaderno nocturno).
 
@@ -70,6 +70,14 @@ Los tickets con más de un paso tienen una flecha (▼) o se pliegan pulsando la
 ### Fecha de seguimiento
 
 Cada paso Pendiente puede llevar una fecha de seguimiento (selector de fecha en la línea, o "Recordar el" al crear el paso). Cuando llega ese día, el ticket sube a **Reclamar hoy** con una etiqueta roja, para que no se quede olvidado.
+
+### Recordatorios
+
+Notas sueltas para un día concreto que no son un ticket ("Cambiar la copia de seguridad"). Se crean en su panel con un texto y una fecha (por defecto, hoy). Los de hoy y los atrasados salen arriba en rojo, marcan un punto en "Próximos 7 días" y se suman a la frase de la cabecera. Al pasar el ratón aparecen **✓ Hecho** (lo quita de la vista y guarda la fecha en que se hizo), **✎** editar y **✕** borrar. No se repiten: cada recordatorio es para una sola fecha.
+
+### Paneles laterales
+
+Cada panel de la derecha tiene un botón **ocultar** en su esquina. Los ocultos se recuperan con **+ Añadir widget**, encima de la columna, y vuelven a su sitio. El navegador recuerda qué paneles ocultaste.
 
 ### Búsqueda
 
@@ -97,7 +105,7 @@ La pestaña **Contactos** guarda nombre, empresa, puesto, teléfono y correo, ag
 ### Copias de seguridad
 
 - Se guarda una copia automática al día en `data/backups/backup-AAAA-MM-DD.json` (la primera del día y al arrancar). Se conservan las últimas 30.
-- **Exportar** descarga todos los tickets y contactos en un único JSON.
+- **Exportar** descarga todos los tickets, contactos y recordatorios en un único JSON.
 - **Importar** restaura desde ese fichero, reemplazando los datos actuales (los adjuntos no viajan en el JSON: copia `data/files/` aparte). Antes guarda una copia `pre-import-*.json` por si te arrepientes.
 
 ## Estructura
@@ -105,7 +113,7 @@ La pestaña **Contactos** guarda nombre, empresa, puesto, teléfono y correo, ag
 ```
 server.py          Servidor HTTP (librería estándar) y API JSON
 static/index.html  Toda la interfaz (HTML + CSS + JS)
-data/              Datos: tickets.json, contacts.json, files/, backups/   (no se sube al repo)
+data/              Datos: tickets.json, contacts.json, reminders.json, files/, backups/   (no se sube al repo)
 iniciar.bat        Arranque en Windows
 ```
 
@@ -113,9 +121,9 @@ iniciar.bat        Arranque en Windows
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/tickets`, `/api/contacts` | Lista completa |
-| PUT | `/api/tickets/<id>`, `/api/contacts/<id>` | Crea o reemplaza un elemento |
-| DELETE | `/api/tickets/<id>`, `/api/contacts/<id>` | Borra un elemento |
+| GET | `/api/tickets`, `/api/contacts`, `/api/reminders` | Lista completa |
+| PUT | `/api/tickets/<id>`, `/api/contacts/<id>`, `/api/reminders/<id>` | Crea o reemplaza un elemento |
+| DELETE | `/api/tickets/<id>`, `/api/contacts/<id>`, `/api/reminders/<id>` | Borra un elemento |
 | POST | `/api/tickets/<id>/files?name=<nombre>` | Adjunta un archivo (cuerpo = bytes del fichero) |
 | GET | `/api/files/<ticket>/<archivo>` | Abre o descarga un adjunto |
 | DELETE | `/api/tickets/<id>/files/<archivo>` | Quita un adjunto |
@@ -132,6 +140,8 @@ iniciar.bat        Arranque en Windows
   "files": [ { "id": "...", "name": "presupuesto.pdf", "size": 12345, "type": "application/pdf", "added": "ISO" } ] }
 // contacto
 { "id": "...", "name": "", "company": "", "role": "", "phone": "", "email": "" }
+// recordatorio
+{ "id": "...", "text": "...", "date": "AAAA-MM-DD", "created": "ISO", "done": null }
 ```
 
 ## Hoja de ruta
